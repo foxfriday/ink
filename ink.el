@@ -145,7 +145,7 @@
   (let* ((log-buffer (get-buffer-create "*inky-log*"))
          (tdir (expand-file-name ink-temp-dir default-directory))
          (fname (file-name-nondirectory fsvg))
-         (file (concat (file-name-as-directory tdir) fname))
+         (file (concat (file-name-as-directory tdir) fname)))
     (make-directory tdir t)
     (rename-file fsvg file)
     (make-process :name "inksape"

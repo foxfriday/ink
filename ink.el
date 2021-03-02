@@ -92,11 +92,12 @@
 
 (defun ink-insert-tex (file)
   "Inserts tex string at point."
-  (let* ((dname (file-name-directory file))
+  (let* ((fdir (expand-file-name ink-fig-dir default-directory))
+         (dname (file-name-directory file))
          (fname (file-name-nondirectory file))
          (name (file-name-sans-extension fname))
          (caption (downcase name))
-         (ltex (format ink-latex dname name caption)))
+         (ltex (format ink-latex fdir name caption)))
     (message dname)
     (insert ltex)))
 
@@ -129,16 +130,24 @@
                   :sentinel 'ink-sentinel)))
 
 (defun ink-edit-figure ()
-  "Edit existing figure."
+  "Edit existing figure or related tex file."
   (interactive)
   (let* ((fdir (expand-file-name ink-fig-dir default-directory))
-         (fig (read-file-name "Figure: " fdir))
-         (fname (file-name-nondirectory fig))
+         (pick (read-file-name "Edit file: " fdir))
+         (file (expand-file-name pick default-directory))
+         (type (file-name-extension file nil)))
+    (if (string= type "svg")
+        (ink-edit-svg file)
+      (find-file file))))
+
+(defun ink-edit-svg (fsvg)
+  "Edit and existing svg file."
+  (let* ((log-buffer (get-buffer-create "*inky-log*"))
          (tdir (expand-file-name ink-temp-dir default-directory))
+         (fname (file-name-nondirectory fsvg))
          (file (concat (file-name-as-directory tdir) fname))
-         (log-buffer (get-buffer-create "*inky-log*")))
     (make-directory tdir t)
-    (rename-file fig file)
+    (rename-file fsvg file)
     (make-process :name "inksape"
                   :buffer log-buffer
                   :command (list "inkscape" file)

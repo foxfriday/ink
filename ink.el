@@ -14,8 +14,12 @@
                         "--export-overwrite")
   "Default list of flags for inkscape.")
 
+(defvar ink-process-cmnd 'ink-process-cmnd-default
+  "Function to make command from the svg file and the flags")
+
 (defvar ink-latex "\n\\begin{figure}
-    \\def\\svgwidth{\\linewidth}
+    \\centering
+    \\def\\svgwidth{\\columnwidth}
     \\import{%s}{%s.pdf_tex}
     \\label{fig:%s}
     \\caption{}
@@ -101,19 +105,37 @@
     (message dname)
     (insert ltex)))
 
+(defun ink-process-cmnd-default (file flags)
+  "Makes to command to convert an svg file to tex"
+  (concat "inkscape" " " file " " flags))
+
 (defun ink-process ()
   "Use inkspace to create an image and tex."
   (let* ((tdir (expand-file-name ink-temp-dir default-directory))
          (files-all (directory-files tdir t "\\.svg$"))
          (flags (mapconcat 'identity ink-flags " ")))
     (dolist (file files-all (ink-post-process tdir))
-      (shell-command (concat "inkscape " file " " flags))
+      (shell-command (funcall ink-process-cmnd file flags))
       (ink-insert-tex file))))
 
 (defun ink-sentinel (process event)
   "Wait for inkscape to close."
   (when (memq (process-status process) '(exit signal))
     (ink-process)))
+
+(defun ink-edit-svg (fsvg)
+  "Edit and existing svg file."
+  (let* ((log-buffer (get-buffer-create "*inky-log*"))
+         (tdir (expand-file-name ink-temp-dir default-directory))
+         (fname (file-name-nondirectory fsvg))
+         (file (concat (file-name-as-directory tdir) fname)))
+    (make-directory tdir t)
+    (rename-file fsvg file)
+    (make-process :name "inksape"
+                  :buffer log-buffer
+                  :command (list "inkscape" file)
+                  :stderr log-buffer
+                  :sentinel 'ink-sentinel)))
 
 (defun ink-make-figure (fig)
   "Make a new figure and insert it at point."
@@ -139,19 +161,5 @@
     (if (string= type "svg")
         (ink-edit-svg file)
       (find-file file))))
-
-(defun ink-edit-svg (fsvg)
-  "Edit and existing svg file."
-  (let* ((log-buffer (get-buffer-create "*inky-log*"))
-         (tdir (expand-file-name ink-temp-dir default-directory))
-         (fname (file-name-nondirectory fsvg))
-         (file (concat (file-name-as-directory tdir) fname)))
-    (make-directory tdir t)
-    (rename-file fsvg file)
-    (make-process :name "inksape"
-                  :buffer log-buffer
-                  :command (list "inkscape" file)
-                  :stderr log-buffer
-                  :sentinel 'ink-sentinel)))
 
 (provide 'ink)

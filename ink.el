@@ -1,11 +1,13 @@
-;; ink.el
-;; Insert images in a LaTeX document using inkscape. You can insert a new
-;; figure at point using ink-make-figure or edit an existing figure with
-;; ink-edit-figure. This is pretty rough so use at your own risk.
+;;; ink.el --- Insert images in a LaTeX document using inkscape.
+
+;;; Commentary:
+;; You can insert a new figure at point using ink-make-figure or
+;; edit an existing figure with ink-edit-figure.
 ;; This assumes you have inkscape installed.
 
+;;; Code:
 (defvar ink-fig-dir "figures"
-  "Default image directory")
+  "Default image directory.")
 
 (defvar ink-flags (list "--export-area-drawing"
                         "--export-dpi 300"
@@ -15,7 +17,7 @@
   "Default list of flags for inkscape.")
 
 (defvar ink-process-cmnd 'ink-process-cmnd-default
-  "Function to make command from the svg file and the flags")
+  "Function to make command from the svg file and the flags.")
 
 (defvar ink-latex "\n\\begin{figure}
     \\centering
@@ -24,10 +26,10 @@
     \\label{fig:%s}
     \\caption{}
 \\end{figure}\n"
-  "Default latex insert")
+  "Default latex insert.")
 
 (defvar ink-temp-dir "temp"
-  "Default name for the temporary directory")
+  "Default name for the temporary directory.")
 
 (defvar ink-default-file
   "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>
@@ -84,10 +86,10 @@
      inkscape:groupmode=\"layer\"
      id=\"layer1\" />
 </svg>"
-     "Default file template")
+     "Default file template.")
 
 (defun ink-post-process (tdir)
-  "Move files to image directory and remove temp."
+  "Move files to image directory and remove TDIR."
   (let* ((temp (expand-file-name ink-fig-dir default-directory))
          (idir (file-name-as-directory temp)))
     (copy-directory tdir idir nil t t)
@@ -95,7 +97,7 @@
     (message "done")))
 
 (defun ink-insert-tex (file)
-  "Inserts tex string at point."
+  "Insert tex string associated with FILE."
   (let* ((fdir (expand-file-name ink-fig-dir default-directory))
          (dname (file-name-directory file))
          (fname (file-name-nondirectory file))
@@ -106,7 +108,7 @@
     (insert ltex)))
 
 (defun ink-process-cmnd-default (file flags)
-  "Makes to command to convert an svg file to tex"
+  "Make command to convert a FILE to tex using the FLAGS."
   (concat "inkscape" " " file " " flags))
 
 (defun ink-process ()
@@ -119,12 +121,12 @@
       (ink-insert-tex file))))
 
 (defun ink-sentinel (process event)
-  "Wait for inkscape to close."
+  "Wait for inkscape PROCESS to close but has no use for EVENT."
   (when (memq (process-status process) '(exit signal))
     (ink-process)))
 
 (defun ink-edit-svg (fsvg)
-  "Edit and existing svg file."
+  "Edit and existing svg file named FSVG."
   (let* ((log-buffer (get-buffer-create "*inky-log*"))
          (tdir (expand-file-name ink-temp-dir default-directory))
          (fname (file-name-nondirectory fsvg))
@@ -138,7 +140,7 @@
                   :sentinel 'ink-sentinel)))
 
 (defun ink-make-figure (fig)
-  "Make a new figure and insert it at point."
+  "Make a new figure named FIG and insert it at point."
   (interactive "sFigure name: ")
   (let* ((log-buffer (get-buffer-create "*inky-log*"))
          (tdir (expand-file-name ink-temp-dir default-directory))
@@ -163,3 +165,4 @@
       (find-file file))))
 
 (provide 'ink)
+;;; ink.el ends here

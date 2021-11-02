@@ -9,24 +9,59 @@
 (defvar ink-fig-dir "figures"
   "Default image directory.")
 
-(defvar ink-flags (list "--export-area-drawing"
-                        "--export-dpi 300"
-                        "--export-type=pdf"
-                        "--export-latex"
-                        "--export-overwrite")
+(defvar ink-flags-latex (list "--export-area-drawing"
+                              "--export-dpi 300"
+                              "--export-type=pdf"
+                              "--export-latex"
+                              "--export-overwrite")
+  "List of flags to produce a LaTeX file with inkscape.")
+
+(defvar ink-flags-png (list "--export-area-drawing"
+                            "--export-dpi 100"
+                            "--export-type=png"
+                            "--export-overwrite")
+  "List of flags to produce a png file with inkspace.")
+
+(defvar ink-flags ink-flags-latex
   "Default list of flags for inkscape.")
+
+(defvar ink-flags-options
+  (list (cons 'latex-mode ink-flags-latex)
+        (cons 'org-mode ink-flags-png)
+        (cons 'markdown-mode ink-flags-png))
+  "The text used for inserting images.")
 
 (defvar ink-process-cmnd 'ink-process-cmnd-default
   "Function to make command from the svg file and the flags.")
 
-(defvar ink-latex "\n\\begin{figure}
+(define-obsolete-variable-alias
+  'ink-latex
+  'ink-insert-latex
+  "2021-11-02")
+
+(defvar ink-insert-latex "\n\\begin{figure}
     \\centering
     \\def\\svgwidth{\\columnwidth}
     \\import{%s}{%s.pdf_tex}
     \\label{fig:%s}
     \\caption{}
 \\end{figure}\n"
-  "Default latex insert.")
+  "LaTeX insert.")
+
+(defvar ink-insert-org "#+NAME: fig:%3$s\n[[%1$s/%2$s.png]]\n"
+  "Org mode insert.")
+
+(defvar ink-insert-md "![%3$s](%1$s/%2$s.png)"
+  "Markdown mode insert.")
+
+(defvar ink-insert ink-insert-latex
+  "Default text insert string.")
+
+(defvar ink-insert-options
+  (list (cons 'latex-mode ink-insert-latex)
+        (cons 'org-mode ink-insert-org)
+        (cons 'markdown-mode ink-insert-md))
+  "The text used for inserting images.")
 
 (defvar ink-temp-dir "temp"
   "Default name for the temporary directory.")
@@ -103,9 +138,10 @@
          (fname (file-name-nondirectory file))
          (name (file-name-sans-extension fname))
          (caption (downcase name))
-         (ltex (format ink-latex fdir name caption)))
-    (message dname)
-    (insert ltex)))
+         (mfrmt (assoc major-mode ink-insert-options))
+         (frmt (if mfrmt (cdr mfrmt) ink-insert))
+         (txt (format frmt fdir name caption)))
+    (insert txt)))
 
 (defun ink-process-cmnd-default (file flags)
   "Make command to convert a FILE to tex using the FLAGS."
@@ -115,7 +151,9 @@
   "Use inkspace to create an image and tex."
   (let* ((tdir (expand-file-name ink-temp-dir default-directory))
          (files-all (directory-files tdir t "\\.svg$"))
-         (flags (mapconcat 'identity ink-flags " ")))
+         (mflags (assoc major-mode ink-flags-options))
+         (mflags (if mflags (cdr mflags) ink-flags))
+         (flags (mapconcat 'identity mflags " ")))
     (dolist (file files-all (ink-post-process tdir))
       (shell-command (funcall ink-process-cmnd file flags))
       (ink-insert-tex file))))

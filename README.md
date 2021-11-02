@@ -20,9 +20,6 @@ With straight:
 
 ``` elisp
 (straight-use-package '(ink :type git :host github :repo "foxfriday/ink"))
-
-(unless (fboundp 'ink-make-figure) (autoload 'ink-make-figure "ink" nil t))
-(unless (fboundp 'ink-edit-figure) (autoload 'ink-edit-figure "ink" nil t))
 ```
 
 ## Troubleshooting

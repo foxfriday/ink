@@ -1,9 +1,9 @@
-;;; ink.el --- Insert images in a LaTeX document using inkscape.
+;;; ink.el --- Insert images in a document using inkscape.
 
 ;;; Commentary:
-;; You can insert a new figure at point using ink-make-figure or
-;; edit an existing figure with ink-edit-figure.
-;; This assumes you have inkscape installed.
+;; You can insert a new figure at point using ink-make-figure or edit an
+;; existing figure with ink-edit-figure. This assumes you have inkscape
+;; installed.
 
 ;;; Code:
 (defvar ink-fig-dir "figures"
@@ -29,7 +29,14 @@
   (list (cons 'latex-mode ink-flags-latex)
         (cons 'org-mode ink-flags-png)
         (cons 'markdown-mode ink-flags-png))
-  "The text used for inserting images.")
+  "The command line flags used with each mode.
+
+If the mode is not found, it uses `ink-flags`. Note that the
+flags and the insert template should match. For example, if you
+are inserting a LaTeX fragment, you should use flags that produce
+an appropriate LaTeX figure and text. And if you are using a
+template that expects and png file, you should make use the flags
+for the same mode produce a png file.")
 
 (defvar ink-process-cmnd 'ink-process-cmnd-default
   "Function to make command from the svg file and the flags.")
@@ -46,22 +53,41 @@
     \\label{fig:%s}
     \\caption{}
 \\end{figure}\n"
-  "LaTeX insert.")
+  "LaTeX insert template.")
 
 (defvar ink-insert-org "#+NAME: fig:%3$s\n[[%1$s/%2$s.png]]\n"
-  "Org mode insert.")
+  "Org mode insert template.
+
+`%1$s` is replaced with the figure's folder.
+`%2$s` is replaced with the figure's file name.
+`%3$s` is replaced with the figure's file name without the extension.
+
+Note that if your template expects a `png` file, the
+corresponding flags should produce a `png` file.")
 
 (defvar ink-insert-md "![%3$s](%1$s/%2$s.png)"
-  "Markdown mode insert.")
+  "Markdown mode insert template.
+
+`%1$s` is replaced with the figure's folder.
+`%2$s` is replaced with the figure's file name.
+`%3$s` is replaced with the figure's file name without the extension.
+
+Note that if your template expects a `png` file, the
+corresponding flags should produce a `png` file.")
 
 (defvar ink-insert ink-insert-latex
-  "Default text insert string.")
+  "Default insert template.")
 
 (defvar ink-insert-options
   (list (cons 'latex-mode ink-insert-latex)
         (cons 'org-mode ink-insert-org)
         (cons 'markdown-mode ink-insert-md))
-  "The text used for inserting images.")
+  "The template used with each mode.
+
+If the mode is not found, it uses `ink-insert`. If you change
+this variable, please make sure you also read the documentation
+for `ink-flag-options` as you may need to change that variable
+too.")
 
 (defvar ink-temp-dir "temp"
   "Default name for the temporary directory.")
@@ -177,6 +203,8 @@
                   :stderr log-buffer
                   :sentinel 'ink-sentinel)))
 
+;;; Commands
+;;;###autoload
 (defun ink-make-figure (fig)
   "Make a new figure named FIG and insert it at point."
   (interactive "sFigure name: ")
@@ -191,6 +219,7 @@
                   :stderr log-buffer
                   :sentinel 'ink-sentinel)))
 
+;;;###autoload
 (defun ink-edit-figure ()
   "Edit existing figure or related tex file."
   (interactive)

@@ -49,7 +49,7 @@ for the same mode produce a png file.")
 (defvar ink-insert-latex "\n\\begin{figure}
     \\centering
     \\def\\svgwidth{\\columnwidth}
-    \\import{%s}{%s.pdf_tex}
+    \\import{%s/}{%s.pdf_tex}
     \\label{fig:%s}
     \\caption{}
 \\end{figure}\n"

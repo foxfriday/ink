@@ -50,8 +50,8 @@ for the same mode produce a png file.")
     \\centering
     \\def\\svgwidth{\\columnwidth}
     \\import{%s/}{%s.pdf_tex}
-    \\label{fig:%s}
     \\caption{}
+    \\label{fig:%s}
 \\end{figure}\n"
   "LaTeX insert template.")
 

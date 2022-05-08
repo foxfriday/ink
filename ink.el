@@ -49,7 +49,7 @@ for the same mode produce a png file.")
 (defvar ink-insert-latex "\n\\begin{figure}
     \\centering
     \\def\\svgwidth{\\columnwidth}
-    \\import{%s/}{%s.pdf_tex}
+    \\subimport{%s}{%s.pdf_tex}
     \\caption{}
     \\label{fig:%s}
 \\end{figure}\n"
@@ -159,14 +159,13 @@ too.")
 
 (defun ink-insert-tex (file)
   "Insert tex string associated with FILE."
-  (let* ((fdir (expand-file-name ink-fig-dir default-directory))
-         (dname (file-name-directory file))
+  (let* ((dname (file-name-directory file))
          (fname (file-name-nondirectory file))
          (name (file-name-sans-extension fname))
          (caption (downcase name))
          (mfrmt (assoc major-mode ink-insert-options))
          (frmt (if mfrmt (cdr mfrmt) ink-insert))
-         (txt (format frmt fdir name caption)))
+         (txt (format frmt ink-fig-dir name caption)))
     (insert txt)))
 
 (defun ink-process-cmnd-default (file flags)

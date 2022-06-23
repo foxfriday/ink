@@ -55,7 +55,7 @@ for the same mode produce a png file.")
 \\end{figure}\n"
   "LaTeX insert template.")
 
-(defvar ink-insert-org "#+NAME: fig:%3$s\n[[%1$s/%2$s.png]]\n"
+(defvar ink-insert-org "#+NAME: fig:%3$s\n[[File:%1$s/%2$s.png]]\n"
   "Org mode insert template.
 
 `%1$s` is replaced with the figure's folder.

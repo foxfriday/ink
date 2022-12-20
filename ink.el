@@ -1,4 +1,7 @@
-;;; ink.el --- Insert images in a document using inkscape.
+;;; ink.el --- Insert images in a document using inkscape. -*- lexical-binding: t; -*-
+
+;; Version: 0.0.01
+;; URL: https://github.com/foxfriday/ink
 
 ;;; Commentary:
 ;; You can insert a new figure at point using ink-make-figure or edit an
@@ -159,8 +162,7 @@ too.")
 
 (defun ink-insert-tex (file)
   "Insert tex string associated with FILE."
-  (let* ((dname (file-name-directory file))
-         (fname (file-name-nondirectory file))
+  (let* ((fname (file-name-nondirectory file))
          (name (file-name-sans-extension fname))
          (caption (downcase name))
          (mfrmt (assoc major-mode ink-insert-options))

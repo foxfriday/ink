@@ -185,7 +185,7 @@ too.")
       (shell-command (funcall ink-process-cmnd file flags))
       (ink-insert-tex file))))
 
-(defun ink-sentinel (process event)
+(defun ink-sentinel (process _event)
   "Wait for inkscape PROCESS to close but has no use for EVENT."
   (when (memq (process-status process) '(exit signal))
     (ink-process)))

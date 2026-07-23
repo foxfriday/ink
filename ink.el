@@ -1,99 +1,121 @@
-;;; ink.el --- Insert images in a document using inkscape. -*- lexical-binding: t; -*-
+;;; ink.el --- Insert images in a document using inkscape -*- lexical-binding: t; -*-
 
-;; Version: 0.0.01
+;; Version: 0.0.2
+;; Package-Requires: ((emacs "27.1"))
+;; Keywords: multimedia, tex, convenience
 ;; URL: https://github.com/foxfriday/ink
 
 ;;; Commentary:
-;; You can insert a new figure at point using ink-make-figure or edit an
-;; existing figure with ink-edit-figure. This assumes you have inkscape
-;; installed.
+;; You can insert a new figure at point using `ink-make-figure', edit an
+;; existing figure with `ink-edit-figure', or start a new figure from an
+;; existing one with `ink-duplicate-figure'.  This assumes you have
+;; inkscape installed.
 
 ;;; Code:
-(defvar ink-fig-dir "figures"
-  "Default image directory.")
 
-(defvar ink-flags-latex (list "--export-area-drawing"
-                              "--export-dpi 300"
-                              "--export-type=pdf"
-                              "--export-latex"
-                              "--export-overwrite")
-  "List of flags to produce a LaTeX file with inkscape.")
+(defgroup ink nil
+  "Insert images in a document using inkscape."
+  :group 'multimedia
+  :prefix "ink-")
 
-(defvar ink-flags-png (list "--export-area-drawing"
-                            "--export-dpi 100"
-                            "--export-type=png"
-                            "--export-overwrite")
-  "List of flags to produce a png file with inkspace.")
+(defcustom ink-fig-dir "figures"
+  "Directory where the images are saved, relative to the document."
+  :type 'string)
 
-(defvar ink-flags ink-flags-latex
-  "Default list of flags for inkscape.")
+(defcustom ink-flags-latex (list "--export-area-drawing"
+                                 "--export-dpi 300"
+                                 "--export-type=pdf"
+                                 "--export-latex"
+                                 "--export-overwrite")
+  "List of flags to produce a LaTeX file with inkscape."
+  :type '(repeat string))
 
-(defvar ink-flags-options
+(defcustom ink-flags-png (list "--export-area-drawing"
+                               "--export-dpi 100"
+                               "--export-type=png"
+                               "--export-overwrite")
+  "List of flags to produce a png file with inkscape."
+  :type '(repeat string))
+
+(defcustom ink-flags ink-flags-latex
+  "Default list of flags for inkscape."
+  :type '(repeat string))
+
+(defcustom ink-flags-options
   (list (cons 'latex-mode ink-flags-latex)
         (cons 'org-mode ink-flags-png)
         (cons 'markdown-mode ink-flags-png))
-  "The command line flags used with each mode.
+  "The command line flags used with each major and derived modes.
 
-If the mode is not found, it uses `ink-flags`. Note that the
-flags and the insert template should match. For example, if you
-are inserting a LaTeX fragment, you should use flags that produce
-an appropriate LaTeX figure and text. And if you are using a
-template that expects and png file, you should make use the flags
-for the same mode produce a png file.")
+If the current mode is not found, `ink-flags' is used. Note that
+the flags and the insert template should match: if your template
+inserts a LaTeX fragment, you should use flags that produce an
+appropriate LaTeX figure, and if your template expects a png file, the
+flags for that mode should produce a png file."
+  :type '(alist :key-type symbol :value-type (repeat string)))
 
-(defvar ink-process-cmnd 'ink-process-cmnd-default
-  "Function to make command from the svg file and the flags.")
+(defcustom ink-process-cmnd 'ink-process-cmnd-default
+  "Function to make the shell command from the svg file and the flags."
+  :type 'function)
 
 (define-obsolete-variable-alias
   'ink-latex
   'ink-insert-latex
   "2021-11-02")
 
-(defvar ink-insert-latex "\n\\begin{figure}
+(defcustom ink-insert-latex "\n\\begin{figure}
     \\centering
     \\def\\svgwidth{\\columnwidth}
     \\subimport{%s}{%s.pdf_tex}
     \\caption{}
     \\label{fig:%s}
 \\end{figure}\n"
-  "LaTeX insert template.")
+  "LaTeX insert template."
+  :type 'string)
 
-(defvar ink-insert-org "#+NAME: fig:%3$s\n[[file:%1$s/%2$s.png]]\n"
+(defcustom ink-insert-org "#+NAME: fig:%3$s\n[[file:%1$s/%2$s.png]]\n"
   "Org mode insert template.
 
-`%1$s` is replaced with the figure's folder.
-`%2$s` is replaced with the figure's file name.
-`%3$s` is replaced with the figure's file name without the extension.
+`%1$s' is replaced with the figure's folder.
+`%2$s' is replaced with the figure's file name.
+`%3$s' is replaced with the figure's file name without the extension.
 
-Note that if your template expects a `png` file, the
-corresponding flags should produce a `png` file.")
+Note that if your template expects a png file, the corresponding
+flags should produce a png file."
+  :type 'string)
 
-(defvar ink-insert-md "![%3$s](%1$s/%2$s.png)"
+(defcustom ink-insert-md "![%3$s](%1$s/%2$s.png)"
   "Markdown mode insert template.
 
-`%1$s` is replaced with the figure's folder.
-`%2$s` is replaced with the figure's file name.
-`%3$s` is replaced with the figure's file name without the extension.
+`%1$s' is replaced with the figure's folder.
+`%2$s' is replaced with the figure's file name.
+`%3$s' is replaced with the figure's file name without the extension.
 
-Note that if your template expects a `png` file, the
-corresponding flags should produce a `png` file.")
+Note that if your template expects a png file, the corresponding
+flags should produce a png file."
+  :type 'string)
 
-(defvar ink-insert ink-insert-latex
-  "Default insert template.")
+(defcustom ink-insert ink-insert-latex
+  "Default insert template."
+  :type 'string)
 
-(defvar ink-insert-options
+(defcustom ink-insert-options
   (list (cons 'latex-mode ink-insert-latex)
         (cons 'org-mode ink-insert-org)
         (cons 'markdown-mode ink-insert-md))
-  "The template used with each mode.
+  "The insert template used with each major and derived modes.
 
-If the mode is not found, it uses `ink-insert`. If you change
-this variable, please make sure you also read the documentation
-for `ink-flag-options` as you may need to change that variable
-too.")
+If the current mode is not found, `ink-insert' is used.  If you change this
+variable, please make sure you also read the documentation for
+`ink-flags-options' as you may need to change that variable too."
+  :type '(alist :key-type symbol :value-type string))
 
-(defvar ink-temp-dir "temp"
-  "Default name for the temporary directory.")
+(defcustom ink-temp-dir "temp"
+  "Name of the temporary directory used while editing a figure."
+  :type 'string)
+
+(defvar ink-log-buffer "*inky-log*"
+  "Name of the buffer receiving inkscape's output.")
 
 (defvar ink-default-file
   "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>
@@ -150,87 +172,150 @@ too.")
      inkscape:groupmode=\"layer\"
      id=\"layer1\" />
 </svg>"
-     "Default file template.")
+  "Default file template.")
 
-(defun ink-post-process (tdir)
-  "Move files to image directory and remove TDIR."
-  (let* ((temp (expand-file-name ink-fig-dir default-directory))
-         (idir (file-name-as-directory temp)))
-    (copy-directory tdir idir nil t t)
-    (delete-directory tdir t nil)
-    (message "done")))
+(defun ink--mode-value (alist default)
+  "Return the value in ALIST for the current major mode, else DEFAULT.
 
-(defun ink-insert-tex (file)
-  "Insert tex string associated with FILE."
-  (let* ((fname (file-name-nondirectory file))
-         (name (file-name-sans-extension fname))
-         (caption (downcase name))
-         (mfrmt (assoc major-mode ink-insert-options))
-         (frmt (if mfrmt (cdr mfrmt) ink-insert))
-         (txt (format frmt ink-fig-dir name caption)))
-    (insert txt)))
+ALIST maps major modes to values.  Modes derived from a mode in
+ALIST also match."
+  (let ((mode (apply #'derived-mode-p (mapcar #'car alist))))
+    (if mode (cdr (assq mode alist)) default)))
+
+(defun ink--figure-file (name)
+  "Return the path of the svg figure NAME in the figure directory."
+  (expand-file-name (concat name ".svg") (expand-file-name ink-fig-dir)))
+
+(defun ink--temp-file (name)
+  "Return the temporary svg path for figure NAME, creating the directory."
+  (let ((tdir (expand-file-name ink-temp-dir)))
+    (make-directory tdir t)
+    (expand-file-name (concat name ".svg") tdir)))
 
 (defun ink-process-cmnd-default (file flags)
-  "Make command to convert a FILE to tex using the FLAGS."
-  (concat "inkscape" " " file " " flags))
+  "Make the shell command to export FILE using the string FLAGS."
+  (concat "inkscape " (shell-quote-argument file) " " flags))
 
-(defun ink-process ()
-  "Use inkspace to create an image and tex."
-  (let* ((tdir (expand-file-name ink-temp-dir default-directory))
-         (files-all (directory-files tdir t "\\.svg$"))
-         (mflags (assoc major-mode ink-flags-options))
-         (mflags (if mflags (cdr mflags) ink-flags))
-         (flags (mapconcat 'identity mflags " ")))
-    (dolist (file files-all (ink-post-process tdir))
-      (shell-command (funcall ink-process-cmnd file flags))
-      (ink-insert-tex file))))
+(defun ink--post-process (file)
+  "Move the files exported from FILE to the image directory.
 
-(defun ink-sentinel (process _event)
-  "Wait for inkscape PROCESS to close but has no use for EVENT."
-  (when (memq (process-status process) '(exit signal))
-    (ink-process)))
+Removes the temporary directory when it is left empty."
+  (let* ((tdir (file-name-directory file))
+         (name (file-name-sans-extension (file-name-nondirectory file)))
+         (idir (file-name-as-directory (expand-file-name ink-fig-dir)))
+         (outputs (directory-files tdir t
+                                   (concat "\\`" (regexp-quote name) "\\."))))
+    (make-directory idir t)
+    (dolist (output outputs)
+      (rename-file output (concat idir (file-name-nondirectory output)) t))
+    (unless (directory-files tdir nil directory-files-no-dot-files-regexp t)
+      (delete-directory tdir))
+    (message "ink: exported %s to %s" name idir)))
+
+(defun ink--insert-snippet (file frmt marker)
+  "Insert the include snippet for FILE at MARKER using the template FRMT."
+  (let ((buffer (marker-buffer marker))
+        (name (file-name-sans-extension (file-name-nondirectory file))))
+    (if (not (buffer-live-p buffer))
+        (message "ink: buffer for figure %s is gone, snippet not inserted" name)
+      (with-current-buffer buffer
+        (save-excursion
+          (goto-char marker)
+          (insert (format frmt ink-fig-dir name (downcase name)))))
+      (set-marker marker nil))))
+
+(defun ink--process (file dir flags frmt marker)
+  "Export FILE with inkscape and move the results to the image directory.
+
+DIR is the directory of the document the figure belongs to.
+FLAGS is the string of command line flags passed to inkscape.
+When MARKER is non-nil, insert the template FRMT at MARKER."
+  (let ((default-directory dir))
+    (call-process-shell-command (funcall ink-process-cmnd file flags)
+                                nil ink-log-buffer)
+    (ink--post-process file)
+    (when marker
+      (ink--insert-snippet file frmt marker))))
+
+(defun ink--launch (file &optional marker)
+  "Open FILE in inkscape and export it when inkscape closes.
+
+When MARKER is non-nil, insert the figure's include snippet at
+MARKER after the export.  The export flags and insert template
+are taken from the current buffer's major mode."
+  (let ((dir default-directory)
+        (flags (mapconcat #'identity
+                          (ink--mode-value ink-flags-options ink-flags)
+                          " "))
+        (frmt (and marker (ink--mode-value ink-insert-options ink-insert))))
+    (make-process :name "inkscape"
+                  :buffer (get-buffer-create ink-log-buffer)
+                  :command (list "inkscape" file)
+                  :stderr (get-buffer-create ink-log-buffer)
+                  :sentinel
+                  (lambda (process _event)
+                    (cond ((and (eq (process-status process) 'exit)
+                                (zerop (process-exit-status process)))
+                           (ink--process file dir flags frmt marker))
+                          ((memq (process-status process) '(exit signal))
+                           (message "ink: inkscape exited abnormally, see %s"
+                                    ink-log-buffer)))))))
 
 (defun ink-edit-svg (fsvg)
-  "Edit and existing svg file named FSVG."
-  (let* ((log-buffer (get-buffer-create "*inky-log*"))
-         (tdir (expand-file-name ink-temp-dir default-directory))
-         (fname (file-name-nondirectory fsvg))
-         (file (concat (file-name-as-directory tdir) fname)))
-    (make-directory tdir t)
-    (rename-file fsvg file)
-    (make-process :name "inksape"
-                  :buffer log-buffer
-                  :command (list "inkscape" file)
-                  :stderr log-buffer
-                  :sentinel 'ink-sentinel)))
+  "Edit an existing svg file named FSVG.
+
+The file is copied to the temporary directory and copied back
+over the original when inkscape closes."
+  (let ((file (ink--temp-file (file-name-sans-extension
+                               (file-name-nondirectory fsvg)))))
+    (copy-file fsvg file t)
+    (ink--launch file)))
 
 ;;; Commands
 ;;;###autoload
 (defun ink-make-figure (fig)
-  "Make a new figure named FIG and insert it at point."
+  "Make a new figure named FIG and insert it at point.
+
+If the figure already exists, offer to edit it instead."
   (interactive "sFigure name: ")
-  (let* ((log-buffer (get-buffer-create "*inky-log*"))
-         (tdir (expand-file-name ink-temp-dir default-directory))
-         (file (concat (file-name-as-directory tdir) fig ".svg")))
-    (make-directory tdir t)
-    (write-region ink-default-file nil file)
-    (make-process :name "inksape"
-                  :buffer log-buffer
-                  :command (list "inkscape" file)
-                  :stderr log-buffer
-                  :sentinel 'ink-sentinel)))
+  (when (string= fig "")
+    (user-error "The figure needs a name"))
+  (if (file-exists-p (ink--figure-file fig))
+      (if (y-or-n-p (format "Figure %s already exists.  Edit it instead? " fig))
+          (ink-edit-svg (ink--figure-file fig))
+        (user-error "Figure %s already exists" fig))
+    (let ((file (ink--temp-file fig)))
+      (write-region ink-default-file nil file)
+      (ink--launch file (point-marker)))))
 
 ;;;###autoload
 (defun ink-edit-figure ()
-  "Edit existing figure or related tex file."
+  "Edit an existing figure or a related tex file."
   (interactive)
-  (let* ((fdir (expand-file-name ink-fig-dir default-directory))
-         (pick (read-file-name "Edit file: " fdir))
-         (file (expand-file-name pick default-directory))
-         (type (file-name-extension file nil)))
-    (if (string= type "svg")
+  (let* ((fdir (file-name-as-directory (expand-file-name ink-fig-dir)))
+         (file (expand-file-name (read-file-name "Edit file: " fdir) fdir)))
+    (if (string= (file-name-extension file) "svg")
         (ink-edit-svg file)
       (find-file file))))
+
+;;;###autoload
+(defun ink-duplicate-figure (fsvg fig)
+  "Make a new figure named FIG from the existing figure FSVG.
+
+The new figure is opened in inkscape and inserted at point when
+inkscape closes.  The original figure is left untouched."
+  (interactive
+   (list (read-file-name "Duplicate figure: "
+                         (file-name-as-directory (expand-file-name ink-fig-dir))
+                         nil t)
+         (read-string "New figure name: ")))
+  (when (string= fig "")
+    (user-error "The figure needs a name"))
+  (when (file-exists-p (ink--figure-file fig))
+    (user-error "Figure %s already exists" fig))
+  (let ((file (ink--temp-file fig)))
+    (copy-file (expand-file-name fsvg) file t)
+    (ink--launch file (point-marker))))
 
 (provide 'ink)
 ;;; ink.el ends here
